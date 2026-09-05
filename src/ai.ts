@@ -4,9 +4,20 @@ import { pseudoMoves } from './moves.js';
 import { AI_VALUE } from './score.js';
 import type { GameState, Piece, Square } from './types.js';
 
+export interface EnemyMove {
+  pieceId: number;
+  type: Piece['type'];
+  from: Square;
+  to: Square;
+  /** What it took, if anything. Always a player piece. */
+  captured?: Piece['type'];
+}
+
 export interface EnemyPhaseResult {
   kingCaptured: boolean;
   moved: number;
+  /** In resolution order, so the UI can replay the phase as an animation. */
+  moves: EnemyMove[];
 }
 
 function chebyshev(a: Square, b: Square): number {
@@ -28,6 +39,7 @@ export function enemyPhase(state: GameState): EnemyPhaseResult {
     .slice(0, MAX_ACTIVE_AI);
 
   let moved = 0;
+  const moves: EnemyMove[] = [];
 
   for (const piece of actors) {
     // It may have been taken by nothing, but stay defensive: a dead id does nothing.
@@ -40,20 +52,28 @@ export function enemyPhase(state: GameState): EnemyPhaseResult {
     if (target) {
       state.pieces = state.pieces.filter((p) => p.id !== target.id);
     }
+    const from: Square = { file: piece.file, rank: piece.rank };
     piece.file = choice.file;
     piece.rank = choice.rank;
     piece.neverMoved = false;
     moved++;
+    moves.push({
+      pieceId: piece.id,
+      type: piece.type,
+      from,
+      to: { file: choice.file, rank: choice.rank },
+      ...(target ? { captured: target.type } : {}),
+    });
 
     if (target && target.side === 'player' && target.type === 'king') {
       // Stop the phase the instant the crown falls. Nothing after this matters.
       clearStun(state);
-      return { kingCaptured: true, moved };
+      return { kingCaptured: true, moved, moves };
     }
   }
 
   clearStun(state);
-  return { kingCaptured: false, moved };
+  return { kingCaptured: false, moved, moves };
 }
 
 function clearStun(state: GameState): void {

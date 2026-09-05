@@ -4,48 +4,144 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <title>Rank Rush</title>
-    <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="%230b0d12"/><text x="16" y="23" font-size="22" text-anchor="middle" fill="%23f4f7ff">&#9812;</text></svg>' />
+    <link
+      rel="icon"
+      href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="%23739552"/><text x="16" y="24" font-size="22" text-anchor="middle" fill="%23ebecd0">&#9818;</text></svg>'
+    />
     <style>
-      :root { color-scheme: dark; }
+      :root {
+        color-scheme: dark;
+        --shell: #302e2b;
+        --panel: #262522;
+        --line: #3d3a37;
+        --text: #e9e7e4;
+        --muted: #8b8987;
+        --accent: #81b64c;
+        --accent-hi: #a3d160;
+      }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: #07090d;
-        color: #dfe6f5;
-        font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: var(--shell);
+        color: var(--text);
+        font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
         height: 100vh;
         display: grid;
         grid-template-rows: auto 1fr;
+        overflow: hidden;
       }
-      header { padding: 10px 16px 6px; border-bottom: 1px solid #1b2130; }
-      h1 { margin: 0; font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; color: #8ea3c8; }
-      #hud { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #6c7d9c; }
+
+      header {
+        padding: 10px 18px 8px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+      }
+      h1 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        color: #fff;
+      }
+      h1 em { color: var(--accent); font-style: normal; }
+
+      #hud {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+        font-size: 10px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
       #hud span { display: flex; flex-direction: column; }
-      #hud b { font-size: 17px; color: #eaf0ff; letter-spacing: 0; }
-      main { display: grid; grid-template-columns: 1fr 240px; min-height: 0; }
-      #stage { position: relative; min-height: 0; }
-      canvas { display: block; touch-action: none; }
-      aside { border-left: 1px solid #1b2130; padding: 10px 12px; overflow: auto; font-size: 12px; color: #8b9bba; }
-      aside h2 { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #566a8e; margin: 0 0 8px; }
-      #log div { padding: 2px 0; border-bottom: 1px solid #131826; }
+      #hud b { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: 0; }
+
+      main {
+        display: grid;
+        grid-template-columns: 1fr 250px;
+        grid-template-rows: minmax(0, 1fr);
+        min-height: 0;
+      }
+      #stage { position: relative; min-height: 0; overflow: hidden; background: var(--shell); }
+      /* Absolute, so the canvas can never grow the grid row that sizes it. */
+      canvas { position: absolute; top: 0; left: 0; display: block; touch-action: none; user-select: none; }
+
+      aside {
+        background: var(--panel);
+        border-left: 1px solid var(--line);
+        padding: 12px 14px;
+        overflow: auto;
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      aside h2 {
+        margin: 0 0 10px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      #log div { padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+      #log div:first-child { color: var(--text); }
+
       #promo, #over {
-        position: absolute; inset: 0; display: grid; place-content: center; gap: 10px;
-        background: rgba(7, 9, 13, 0.86); text-align: center;
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        gap: 14px;
+        justify-items: center;
+        background: rgba(24, 23, 21, 0.82);
+        text-align: center;
       }
       #promo[hidden], #over[hidden] { display: none; }
-      #promo div { display: flex; gap: 8px; }
-      button {
-        font: inherit; padding: 8px 14px; border-radius: 6px; cursor: pointer;
-        background: #1d2634; color: #e6edff; border: 1px solid #2e3a4f;
+      #promo h2, #over h2 { margin: 0; font-size: 20px; color: #fff; }
+      #over p { margin: 0; color: var(--muted); }
+
+      .choices { display: flex; gap: 10px; }
+      .choices button {
+        width: 68px;
+        height: 68px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 2px solid transparent;
+        border-radius: 6px;
+        background: #ebecd0;
+        color: #2b2926;
+        font-size: 40px;
+        line-height: 1;
+        font-family: "Noto Sans Symbols 2", "Segoe UI Symbol", "Apple Symbols", "DejaVu Sans", serif;
+        cursor: pointer;
       }
-      button:hover { background: #26324a; }
-      h2 { margin: 0; }
-      @media (max-width: 720px) { main { grid-template-columns: 1fr; } aside { display: none; } }
+      .choices button:hover { border-color: var(--accent); background: #f4f5dd; }
+
+      button {
+        font: inherit;
+        font-weight: 700;
+        padding: 10px 22px;
+        border: 0;
+        border-radius: 6px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+        box-shadow: 0 3px 0 #5d8a33;
+      }
+      button:hover { background: var(--accent-hi); }
+      button:active { transform: translateY(2px); box-shadow: 0 1px 0 #5d8a33; }
+
+      @media (max-width: 760px) {
+        main { grid-template-columns: 1fr; }
+        aside { display: none; }
+      }
     </style>
   </head>
   <body>
     <header>
-      <h1>Rank Rush</h1>
+      <h1>Rank<em>Rush</em></h1>
       <div id="hud"></div>
     </header>
     <main>
@@ -53,11 +149,11 @@
         <canvas id="board"></canvas>
         <div id="promo" hidden>
           <h2>Promote to</h2>
-          <div>
-            <button data-promo="knight">knight</button>
-            <button data-promo="bishop">bishop</button>
-            <button data-promo="rook">rook</button>
-            <button data-promo="queen">queen</button>
+          <div class="choices">
+            <button data-promo="queen" title="Queen">&#9819;</button>
+            <button data-promo="rook" title="Rook">&#9820;</button>
+            <button data-promo="bishop" title="Bishop">&#9821;</button>
+            <button data-promo="knight" title="Knight">&#9822;</button>
           </div>
         </div>
         <div id="over" hidden></div>

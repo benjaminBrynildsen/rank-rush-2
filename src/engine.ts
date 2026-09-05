@@ -226,6 +226,18 @@ function resolvePly(state: GameState, mover: Piece, request: MoveRequest, events
 
   // 7. Enemy phase, sequential, aborting the moment the king falls.
   const phase = enemyPhase(state);
+  for (const enemyMove of phase.moves) {
+    events.push({
+      kind: 'enemy-move',
+      pieceId: enemyMove.pieceId,
+      type: enemyMove.type,
+      from: enemyMove.from,
+      to: enemyMove.to,
+    });
+    if (enemyMove.captured) {
+      events.push({ kind: 'lost', type: enemyMove.captured, at: enemyMove.to, to: enemyMove.type });
+    }
+  }
   refreshFog(state);
   if (phase.kingCaptured) {
     endRun(state, 'king-captured', events);

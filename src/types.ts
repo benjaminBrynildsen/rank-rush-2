@@ -92,6 +92,8 @@ export type PlyEvent =
   | { kind: 'conscript'; at: Square }
   | { kind: 'conscript-skipped'; why: string }
   | { kind: 'promotion'; pieceId: number; to: PromoType; at: Square }
+  | { kind: 'enemy-move'; pieceId: number; type: PieceType; from: Square; to: Square }
+  | { kind: 'lost'; type: PieceType; at: Square; to: PieceType }
   | { kind: 'wake'; rank: number; eaten: number }
   | { kind: 'spawn-pack'; packId: number; name: string; count: number }
   | { kind: 'game-over'; reason: GameOverReason };

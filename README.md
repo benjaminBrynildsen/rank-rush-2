@@ -23,7 +23,7 @@ leaderboards, no sound.
 ```bash
 npm install
 npm run dev        # play it at the printed localhost URL
-npm test           # 66 tests, one per glitch in the bible plus the tick order
+npm test           # 68 tests, one per glitch in the bible plus the tick order
 npm run typecheck
 npm run build
 ```
@@ -34,8 +34,15 @@ house player and prints what the board does. Current shape: mean king rank ~208,
 
 ## How to play
 
-Click a piece, click a highlighted square. Green squares are moves, orange squares
-are captures. That is the whole interface.
+The board is a chess board: drag a piece where you want it, or click it and click
+the square. A dot marks a quiet move, a ring marks a capture, and the square you
+came from and the square you landed on stay highlighted until you move again. Your
+king glows red when he is in check. Press Escape or right-click to put a piece back
+down.
+
+Everything Rank Rush adds is layered over that board rather than replacing it: the
+haze ahead is fog you have not seen into, and the charred ranks behind you are the
+wake.
 
 - Pieces move exactly as in chess. No castling, no en passant.
 - **Only the king and the knight recruit.** When either of them captures something,
@@ -73,8 +80,9 @@ src/
   score.ts       capture values and the in-pack streak
   invariants.ts  section 11, asserted after every ply
   engine.ts      the tick order from section 9. Do not reorder it
+  theme.ts       the board palette and the shell it sits in
   render.ts      canvas drawing and the pointer-to-square mapping
-  main.ts        input, HUD, promotion dialog, field report
+  main.ts        drag and drop, move animations, HUD, promotion, field report
 tests/           one test per glitch in section 12, named after it
 scripts/soak.ts  a dumb house player, for looking at run shape
 ```
@@ -97,7 +105,7 @@ has a lock in the code and a test named after it:
 | 12.5 enemies and fog | G27–G35 | `tests/enemies.test.ts` |
 | 12.6 input, UI, replay | G36–G40, G44 | `tests/input-replay.test.ts` |
 | 12.7 score exploits | G41–G43 | `tests/score.test.ts` |
-| 9, 11, 5 | tick order, invariants, the locked start | `tests/engine.test.ts` |
+| 9, 11, 5 | tick order, invariants, the locked start, the enemy phase's own report | `tests/engine.test.ts` |
 
 The invariant suite replays 25 seeds for 120 plies each and asserts section 11 after
 every single ply. That is how the fog-recession bug in `DEVIATIONS.md` was found.

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FILES, PAWN_PERIOD, WAKE_PERIOD } from '../src/constants.js';
 import { checkInvariants } from '../src/invariants.js';
 import { createGame, START_KING, START_KNIGHT, move, targetsFor, wouldPromote } from '../src/engine.js';
-import { autoPlay, bareGame, knightOf, play, playerKingOf, put, sq } from './helpers.js';
+import { autoPlay, bareGame, knightOf, placeAt, play, playerKingOf, put, sq } from './helpers.js';
 
 describe('section 5 - the locked start', () => {
   it('opens with a king on e2 and a knight on g2, and nothing else', () => {
@@ -99,6 +99,52 @@ describe('section 11 - invariants hold every tick', () => {
     for (const reason of reasons) {
       expect(['king-captured', 'no-legal-move', 'wake-took-the-king', 'map-ends']).toContain(reason);
     }
+  });
+});
+
+describe('the enemy phase reports itself', () => {
+  it('emits one enemy-move event per enemy action, in resolution order', () => {
+    const state = bareGame();
+    placeAt(state, playerKingOf(state), 4, 10);
+    put(state, 'enemy', 'pawn', 3, 14);
+    put(state, 'enemy', 'knight', 6, 15);
+
+    const result = play(state, playerKingOf(state).id, sq(4, 11));
+    expect(result.ok).toBe(true);
+
+    const enemyMoves = result.events.filter((e) => e.kind === 'enemy-move');
+    expect(enemyMoves.length).toBeGreaterThan(0);
+    for (const enemyMove of enemyMoves) {
+      expect(enemyMove).toMatchObject({ kind: 'enemy-move' });
+      if (enemyMove.kind !== 'enemy-move') continue;
+      // The piece really is where the event says it landed.
+      const piece = state.pieces.find((p) => p.id === enemyMove.pieceId);
+      expect(piece).toBeDefined();
+      expect({ file: piece!.file, rank: piece!.rank }).toEqual(enemyMove.to);
+      expect(enemyMove.from).not.toEqual(enemyMove.to);
+    }
+    // Front rank first, then file a-h.
+    const ranks = enemyMoves.map((e) => (e.kind === 'enemy-move' ? e.from.rank : 0));
+    expect([...ranks].sort((a, b) => a - b)).toEqual(ranks);
+  });
+
+  it('reports a friendly piece taken by an enemy', () => {
+    const state = bareGame();
+    placeAt(state, playerKingOf(state), 0, 10);
+    const doomed = put(state, 'player', 'pawn', 5, 12);
+    put(state, 'enemy', 'rook', 5, 15);
+
+    const result = play(state, playerKingOf(state).id, sq(0, 11));
+    expect(result.ok).toBe(true);
+
+    const lost = result.events.find((e) => e.kind === 'lost');
+    expect(lost).toBeDefined();
+    if (lost?.kind === 'lost') {
+      expect(lost.type).toBe('pawn');
+      expect(lost.to).toBe('rook');
+      expect(lost.at).toEqual({ file: 5, rank: 12 });
+    }
+    expect(state.pieces.some((p) => p.id === doomed.id)).toBe(false);
   });
 });
 
