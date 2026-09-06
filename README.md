@@ -26,6 +26,7 @@ npm run dev        # play it at the printed localhost URL
 npm test           # 68 tests, one per glitch in the bible plus the tick order
 npm run typecheck
 npm run build
+npm run build:single   # dist/rank-rush.html, one self-contained file you can open
 ```
 
 `npx vite-node scripts/soak.ts 200` plays 200 seeded runs with a deliberately dumb
@@ -33,6 +34,10 @@ house player and prints what the board does. Current shape: mean king rank ~208,
 ~57 captures, ~417 plies per run.
 
 ## How to play
+
+The rules live in the game, in the **How to play** panel beside the board. It hands
+over to the field report once you make your first move, and you can switch back any
+time. The short version:
 
 The board is a chess board: drag a piece where you want it, or click it and click
 the square. A dot marks a quiet move, a ring marks a capture, and the square you
@@ -84,7 +89,9 @@ src/
   render.ts      canvas drawing and the pointer-to-square mapping
   main.ts        drag and drop, move animations, HUD, promotion, field report
 tests/           one test per glitch in section 12, named after it
-scripts/soak.ts  a dumb house player, for looking at run shape
+scripts/
+  soak.ts          a dumb house player, for looking at run shape
+  bundle-single.mjs  folds a build into one self-contained HTML file
 ```
 
 The tick order in `engine.ts` is numbered to match section 9 step for step. It is

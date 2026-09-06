@@ -13,6 +13,27 @@ const log = document.getElementById('log') as HTMLElement;
 const promoBox = document.getElementById('promo') as HTMLElement;
 const overBox = document.getElementById('over') as HTMLElement;
 
+const TABS: { tab: HTMLButtonElement; panel: HTMLElement }[] = [
+  { tab: byId('tab-rules'), panel: document.getElementById('rules') as HTMLElement },
+  { tab: byId('tab-log'), panel: document.getElementById('log-panel') as HTMLElement },
+];
+
+function byId(id: string): HTMLButtonElement {
+  return document.getElementById(id) as HTMLButtonElement;
+}
+
+function showTab(which: 'tab-rules' | 'tab-log'): void {
+  for (const { tab, panel } of TABS) {
+    const on = tab.id === which;
+    tab.setAttribute('aria-selected', String(on));
+    panel.hidden = !on;
+  }
+}
+
+for (const { tab } of TABS) {
+  tab.addEventListener('click', () => showTab(tab.id as 'tab-rules' | 'tab-log'));
+}
+
 const MOVE_MS = 130;
 const ENEMY_STAGGER_MS = 45;
 /** Past this many pixels a press is a drag, not a click. */
@@ -25,6 +46,7 @@ let selected: number | null = null;
 let hover: Square | null = null;
 let lastMove: { from: Square; to: Square } | null = null;
 let pendingMove: { pieceId: number; to: Square } | null = null;
+let handedOverToReport = false;
 
 interface Drag {
   pieceId: number;
@@ -109,7 +131,11 @@ function renderHud(): void {
       ['fallen', state.fallen],
     ] as [string, string | number][]
   )
-    .map(([label, value]) => `<span><b>${value}</b>${label}</span>`)
+    .map(([label, value]) => {
+      const king = playerKing(state);
+      const closing = label === 'wake in' && value === 1 && !!king && king.rank <= state.wakeRank + 2;
+      return `<span${closing ? ' class="urgent"' : ''}><b>${value}</b>${label}</span>`;
+    })
     .join('');
 
   overBox.hidden = !state.gameOverReason;
@@ -144,6 +170,7 @@ function restart(): void {
   slides = [];
   delete overBox.dataset.done;
   log.textContent = '';
+  handedOverToReport = true;
 }
 
 function clearSelection(): void {
@@ -274,6 +301,11 @@ function send(pieceId: number, to: Square, animate: boolean, promo?: PromoType):
   }
 
   if (origin) lastMove = { from: origin, to: { ...to } };
+
+  if (!handedOverToReport) {
+    handedOverToReport = true;
+    showTab('tab-log');
+  }
 
   const now = performance.now();
   // A piece you dragged is already where you put it. A piece you clicked slides.

@@ -8,23 +8,36 @@
       rel="icon"
       href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="%23739552"/><text x="16" y="24" font-size="22" text-anchor="middle" fill="%23ebecd0">&#9818;</text></svg>'
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&display=swap"
+      rel="stylesheet"
+    />
     <style>
       :root {
         color-scheme: dark;
         --shell: #302e2b;
         --panel: #262522;
+        --sunk: #1e1d1b;
         --line: #3d3a37;
         --text: #e9e7e4;
         --muted: #8b8987;
         --accent: #81b64c;
         --accent-hi: #a3d160;
+        --board-light: #ebecd0;
+        --board-dark: #739552;
+        --danger: #e7422f;
+        --rail: 304px;
+        --display: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+        --ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
         background: var(--shell);
         color: var(--text);
-        font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font: 14px/1.55 var(--ui);
         height: 100vh;
         display: grid;
         grid-template-rows: auto 1fr;
@@ -32,35 +45,46 @@
       }
 
       header {
-        padding: 10px 18px 8px;
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        flex-wrap: wrap;
+        padding: 10px 18px;
         background: var(--panel);
         border-bottom: 1px solid var(--line);
       }
       h1 {
         margin: 0;
-        font-size: 15px;
+        font-family: var(--display);
+        font-size: 17px;
         font-weight: 800;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.02em;
         color: #fff;
       }
       h1 em { color: var(--accent); font-style: normal; }
 
       #hud {
         display: flex;
-        gap: 20px;
+        gap: 22px;
         flex-wrap: wrap;
-        margin-top: 6px;
         font-size: 10px;
         letter-spacing: 0.09em;
         text-transform: uppercase;
         color: var(--muted);
       }
       #hud span { display: flex; flex-direction: column; }
-      #hud b { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: 0; }
+      #hud b {
+        font-size: 19px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: 0;
+        font-variant-numeric: tabular-nums;
+      }
+      #hud span.urgent b { color: var(--danger); }
 
       main {
         display: grid;
-        grid-template-columns: 1fr 250px;
+        grid-template-columns: 1fr var(--rail);
         grid-template-rows: minmax(0, 1fr);
         min-height: 0;
       }
@@ -69,23 +93,77 @@
       canvas { position: absolute; top: 0; left: 0; display: block; touch-action: none; user-select: none; }
 
       aside {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
         background: var(--panel);
         border-left: 1px solid var(--line);
-        padding: 12px 14px;
-        overflow: auto;
-        font-size: 12.5px;
-        color: var(--muted);
+        min-height: 0;
       }
-      aside h2 {
-        margin: 0 0 10px;
-        font-size: 10px;
-        font-weight: 700;
+
+      .tabs { display: flex; padding: 8px 8px 0; gap: 4px; }
+      .tabs button {
+        flex: 1;
+        padding: 8px 0;
+        border: 0;
+        border-radius: 5px 5px 0 0;
+        background: transparent;
+        color: var(--muted);
+        font: 600 11px/1 var(--ui);
         letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+        box-shadow: none;
+      }
+      .tabs button:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+      .tabs button[aria-selected="true"] {
+        background: var(--sunk);
+        color: #fff;
+        box-shadow: inset 0 -2px 0 var(--accent);
+      }
+      .tabs button:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: -2px; }
+
+      .panel { overflow: auto; padding: 14px 16px 24px; background: var(--sunk); }
+      .panel[hidden] { display: none; }
+
+      /* How to play */
+      #rules h2 {
+        margin: 18px 0 6px;
+        font-family: var(--display);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
         color: var(--accent);
       }
-      #log div { padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+      #rules h2:first-child { margin-top: 0; }
+      #rules p { margin: 0 0 8px; color: var(--muted); }
+      #rules p strong { color: var(--text); font-weight: 600; }
+      #rules dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; }
+      #rules dt { color: var(--text); font-weight: 600; white-space: nowrap; }
+      #rules dd { margin: 0; color: var(--muted); }
+      .swatch {
+        display: inline-grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+        vertical-align: -5px;
+        background: var(--board-light);
+      }
+      .swatch i { display: block; border-radius: 50%; background: rgba(0, 0, 0, 0.34); }
+      .swatch.dot i { width: 7px; height: 7px; }
+      .swatch.ring i {
+        width: 15px;
+        height: 15px;
+        background: transparent;
+        border: 3px solid rgba(0, 0, 0, 0.3);
+      }
+      .swatch.last { background: #f3f36a; }
+
+      /* Field report */
+      #log div { padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: var(--muted); font-size: 12.5px; }
       #log div:first-child { color: var(--text); }
+      #log:empty::after { content: "Make a move."; color: var(--muted); font-size: 12.5px; }
 
       #promo, #over {
         position: absolute;
@@ -94,11 +172,11 @@
         place-content: center;
         gap: 14px;
         justify-items: center;
-        background: rgba(24, 23, 21, 0.82);
+        background: rgba(24, 23, 21, 0.84);
         text-align: center;
       }
       #promo[hidden], #over[hidden] { display: none; }
-      #promo h2, #over h2 { margin: 0; font-size: 20px; color: #fff; }
+      #promo h2, #over h2 { margin: 0; font-family: var(--display); font-size: 21px; color: #fff; }
       #over p { margin: 0; color: var(--muted); }
 
       .choices { display: flex; gap: 10px; }
@@ -110,19 +188,19 @@
         padding: 0;
         border: 2px solid transparent;
         border-radius: 6px;
-        background: #ebecd0;
+        background: var(--board-light);
         color: #2b2926;
         font-size: 40px;
         line-height: 1;
         font-family: "Noto Sans Symbols 2", "Segoe UI Symbol", "Apple Symbols", "DejaVu Sans", serif;
         cursor: pointer;
+        box-shadow: none;
       }
       .choices button:hover { border-color: var(--accent); background: #f4f5dd; }
 
       button {
-        font: inherit;
-        font-weight: 700;
-        padding: 10px 22px;
+        font: 700 14px/1 var(--ui);
+        padding: 11px 22px;
         border: 0;
         border-radius: 6px;
         background: var(--accent);
@@ -133,9 +211,12 @@
       button:hover { background: var(--accent-hi); }
       button:active { transform: translateY(2px); box-shadow: 0 1px 0 #5d8a33; }
 
-      @media (max-width: 760px) {
-        main { grid-template-columns: 1fr; }
-        aside { display: none; }
+      @media (max-width: 820px) {
+        main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 190px; }
+        aside { border-left: 0; border-top: 1px solid var(--line); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        button:active { transform: none; }
       }
     </style>
   </head>
@@ -158,9 +239,86 @@
         </div>
         <div id="over" hidden></div>
       </div>
+
       <aside>
-        <h2>Field report</h2>
-        <div id="log"></div>
+        <div class="tabs" role="tablist">
+          <button id="tab-rules" role="tab" aria-controls="rules" aria-selected="true">How to play</button>
+          <button id="tab-log" role="tab" aria-controls="log-panel" aria-selected="false">Field report</button>
+        </div>
+
+        <div class="panel" id="rules" role="tabpanel" aria-labelledby="tab-rules">
+          <h2>The board</h2>
+          <p>
+            Eight files wide and endless ahead. You start with a <strong>king on e2</strong> and a
+            <strong>knight on g2</strong>. There is no checkmate to reach and no way to win — you
+            climb until something takes the crown.
+          </p>
+
+          <h2>Moving</h2>
+          <p>
+            Drag a piece, or click it and click the square. Pieces move exactly as in chess: no
+            castling, no en passant.
+          </p>
+          <dl>
+            <dt><span class="swatch dot"><i></i></span> Dot</dt>
+            <dd>a legal quiet move</dd>
+            <dt><span class="swatch ring"><i></i></span> Ring</dt>
+            <dd>a legal capture</dd>
+            <dt><span class="swatch last"></span> Yellow</dt>
+            <dd>the move just played</dd>
+          </dl>
+          <p style="margin-top: 8px">Escape or right-click puts a piece back down.</p>
+
+          <h2>Growing the army</h2>
+          <dl>
+            <dt>Recruit</dt>
+            <dd>when your <strong>king or knight</strong> captures, that piece type joins at your rear. No other piece recruits.</dd>
+            <dt>Conscript</dt>
+            <dd>every 8 moves a pawn arrives at the rear, earned or not.</dd>
+            <dt>Promote</dt>
+            <dd>a pawn promotes 8 ranks from wherever it was born. One queen at a time; further queens arrive as knights.</dd>
+          </dl>
+
+          <h2>What is chasing you</h2>
+          <dl>
+            <dt>The wake</dt>
+            <dd>collapses one rank every 3 moves. Anything it reaches is gone and scores nothing.</dd>
+            <dt>The fog</dt>
+            <dd>you see about 12 ranks ahead. Nothing beyond it can move or capture — but it is waiting.</dd>
+          </dl>
+          <p>
+            Standing still is not an option: the wake advances on your move count, so hesitating
+            costs exactly as much as walking.
+          </p>
+
+          <h2>How the run ends</h2>
+          <p>
+            The king is captured, the king has no legal safe move, or the wake takes him. Check is
+            real — his square glows red.
+          </p>
+
+          <h2>Scoring</h2>
+          <dl>
+            <dt>Distance</dt>
+            <dd>15 a rank, counted on the <strong>king</strong> — running a knight ahead earns nothing.</dd>
+            <dt>Captures</dt>
+            <dd>pawn 1, knight and bishop 3, rook 5, queen 9, a boss king 25.</dd>
+            <dt>Streak</dt>
+            <dd>the 4th and later take inside one pack is worth half again.</dd>
+            <dt>Survivors</dt>
+            <dd>a point each for pieces still standing when you fall.</dd>
+          </dl>
+
+          <h2>The loop</h2>
+          <p>
+            Jump or step in, steal a body, drop it at the tail, walk the king up, and do not let the
+            wake take the crown. Losing the knight is survivable, and it is meant to hurt.
+          </p>
+        </div>
+
+        <div class="panel" id="log-panel" role="tabpanel" aria-labelledby="tab-log" hidden>
+          <div id="log"></div>
+        </div>
       </aside>
     </main>
     <script type="module" src="/src/main.ts"></script>
