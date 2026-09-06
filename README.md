@@ -11,6 +11,8 @@ leave back there is gone.
 The loop in one sentence: jump or step in, steal a body, drop it at the tail, walk
 the king up, do not let the wake take the crown.
 
+**Play it: https://benjaminbrynildsen.github.io/rank-rush-2/**
+
 ## Status
 
 This repo is the **first playable slice** from section 14 of the design bible: the
@@ -116,6 +118,19 @@ has a lock in the code and a test named after it:
 
 The invariant suite replays 25 seeds for 120 plies each and asserts section 11 after
 every single ply. That is how the fog-recession bug in `DEVIATIONS.md` was found.
+
+## Deploying
+
+`.github/workflows/deploy.yml` builds and publishes to GitHub Pages on every push
+to `main`. Typecheck and the full test suite gate the deploy, so a board that does
+not run never ships.
+
+If you fork this, Pages needs enabling once by hand: **Settings → Pages → Build and
+deployment → Source: GitHub Actions**. A workflow token cannot create the Pages site
+itself, so the first deploy fails with `Create Pages site failed: Resource not
+accessible by integration` until that switch is flipped. Nothing else needs
+configuring — the Vite base is relative, so the bundle works under the repo's
+project path as-is.
 
 ## Not built, on purpose
 
