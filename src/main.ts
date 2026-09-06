@@ -132,6 +132,10 @@ function advanceClock(now: number): void {
   while (clock.wakeOwed >= mode.wakeSeconds && !state.gameOverReason) {
     clock.wakeOwed -= mode.wakeSeconds;
     report(requestWakeTick(state));
+    // The board moved under the player without them touching it. The engine
+    // drops its own selection; the highlights this file owns have to go too, or
+    // the dots keep pointing at squares - or at a piece the wake just ate (G07).
+    clearSelection();
   }
 
   if (mode.clockSeconds !== null) {
@@ -371,7 +375,17 @@ function send(pieceId: number, to: Square, animate: boolean, promo?: PromoType):
   const from = state.pieces.find((p) => p.id === pieceId);
   const origin: Square | null = from ? { file: from.file, rank: from.rank } : null;
 
-  const result = move(state, { pieceId, to, promo, generationId: state.generationId });
+  let result: PlyResult;
+  try {
+    result = move(state, { pieceId, to, promo, generationId: state.generationId });
+  } catch (error) {
+    // The engine rolls a ply back rather than half-applying it (section 11), so
+    // the board is still sound. Say so and let the player move again instead of
+    // throwing out of the click handler and leaving them stuck.
+    clearSelection();
+    write(`move refused: ${(error as Error).message}`);
+    return;
+  }
   clearSelection();
 
   if (!result.ok) {

@@ -452,6 +452,35 @@ Castling after the home row is gone. En passant ghost squares vs the wake. Enemy
 promotions off-screen. Map holes under standing pieces. Wrapping files. Real-time
 simultaneous moves. Pieces that spawn pieces besides the two growth rules.
 
+### 12.10 Live board, no move
+
+Step 8 of the tick order checks legality after the enemy phase — but the wake
+(step 9) and the generator (step 11) both run *after* it, and both can take the
+player's last move away. A board with no legal move and no ending is a frozen UI,
+not a game. This is G21 coming back in through the side door.
+
+- **G47 — Mate delivered after the last legality check.** A pack scrolls in and
+  covers the king's only escape squares; step 8 already passed, so nothing ends
+  the run. The player sits in checkmate forever. *Lock:* re-check
+  `hasAnyLegalMove` at the very end of the ply, after generation, so nothing that
+  runs late can leave the board hanging.
+- **G48 — A pack spawns into check.** Spawn stun (G27) stops a fresh pack from
+  *moving*; it does nothing about a rook that materialises already bearing on the
+  king. That is worse than a fog shotgun — the player cannot even answer it.
+  *Lock:* the generator never places a piece that puts the player king in check.
+  The pack shrinks by one instead, which section 7 already allows.
+
+### 12.11 The rear stays on the map
+
+The wake presses the column forward from behind and the last rank stops it from
+the front. Between them the rear spawn point can be squeezed flat.
+
+- **G49 — A spawn lands past the last rank.** `rearRank + 1` is the fallback when
+  the rear rank is full, and against the end of the map that rank does not exist.
+  The invariant catches it, the ply rolls back, and the player's move silently
+  fails. *Lock:* rear spawn squares are bounded by the window top. If nothing
+  fits, skip the spawn — which section 6.3 already allows.
+
 ## 13. Modes
 
 Both modes end at the same place: the last rank.

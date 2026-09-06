@@ -11,9 +11,13 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:single": "npm run build && node scripts/bundle-single.mjs"
+    "build:single": "npm run build && node scripts/bundle-single.mjs",
+    "soak": "vite-node scripts/soak.ts",
+    "fuzz": "vite-node scripts/fuzz.ts",
+    "stress": "vite-node scripts/fuzz.ts 400 expedition && vite-node scripts/fuzz.ts 400 sprint && vite-node scripts/endgame.ts && vite-node scripts/determinism.ts && vite-node scripts/perf.ts"
   },
   "devDependencies": {
+    "@types/node": "^22.20.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
     "vitest": "^2.1.8"

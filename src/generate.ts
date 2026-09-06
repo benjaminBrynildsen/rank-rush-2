@@ -7,7 +7,8 @@ import {
   RAMP_EVERY,
   RANK_MAX,
 } from './constants.js';
-import { pieceAt } from './board.js';
+import { pieceAt, playerKing } from './board.js';
+import { attackSquares } from './moves.js';
 import { hash2, mulberry32, randInt, type Rng } from './rng.js';
 import type { GameState, Piece, PieceType, Square } from './types.js';
 
@@ -206,7 +207,8 @@ export function generateChunk(state: GameState, chunkIndex: number): GeneratedPa
     // If the pack does not fit, shrink the pack. Never spawn on an occupied
     // square and never on the player king (G28).
     if (!square) continue;
-    placed.push({
+
+    const piece: Piece = {
       id: state.nextPieceId++,
       type: member.type,
       side: 'enemy',
@@ -217,12 +219,28 @@ export function generateChunk(state: GameState, chunkIndex: number): GeneratedPa
       // Fresh packs sit out one enemy phase so they cannot shotgun out of fog (G27).
       stunned: true,
       packId: chunkIndex,
-    });
+    };
+
+    // A pack that materialises already attacking the king is a fog shotgun the
+    // player cannot even answer: spawn stun stops it moving, not checking. Drop
+    // the offending piece and let the pack be one smaller (G48).
+    if (checksPlayerKing(state, placed, piece)) continue;
+
+    placed.push(piece);
   }
 
   if (placed.length === 0) return null;
   state.pieces.push(...placed);
   return { packId: chunkIndex, name: template.name, pieces: placed };
+}
+
+/** Would standing this piece here put the player king in check right now? */
+function checksPlayerKing(state: GameState, placed: readonly Piece[], piece: Piece): boolean {
+  const king = playerKing(state);
+  if (!king) return false;
+  // Pieces placed earlier in this pack count: they may block the ray.
+  const probe: GameState = { ...state, pieces: [...state.pieces, ...placed, piece] };
+  return attackSquares(probe, piece).some((sq) => sq.file === king.file && sq.rank === king.rank);
 }
 
 function findFreeSquare(

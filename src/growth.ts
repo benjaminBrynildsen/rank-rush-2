@@ -1,5 +1,5 @@
 import { FILES, MAX_FRIENDLY, MAX_PLAYER_QUEENS, PROMO_DISTANCE, RANK_MAX } from './constants.js';
-import { pieceAt, playerKing, rearRank } from './board.js';
+import { pieceAt, playerKing, rearRank, windowTop } from './board.js';
 import { placementLeavesKingInCheck } from './moves.js';
 import type { GameState, Piece, PieceType, PromoType, Square } from './types.js';
 
@@ -25,9 +25,12 @@ export function rearSpawnSquares(state: GameState, exclude: readonly Square[]): 
   }
 
   const squares: Square[] = [];
-  // First the rear rank, then one rank up if every file there was taken.
+  // First the rear rank, then one rank up if every file there was taken. Both
+  // are bounded by the window: with the wake pressing the column against the
+  // last rank, `base + 1` would otherwise land past the end of the map.
+  const ceiling = Math.min(RANK_MAX, windowTop(state));
   for (const rank of [base, base + 1]) {
-    if (rank > RANK_MAX) continue;
+    if (rank > ceiling) continue;
     for (const file of fileOrder) {
       if (file < 0 || file >= FILES) continue;
       const occupant = pieceAt(state, file, rank);

@@ -33,16 +33,26 @@ No leaderboards and no sound yet.
 ```bash
 npm install
 npm run dev        # play it at the printed localhost URL
-npm test           # 85 tests, one per glitch in the bible plus the tick order
+npm test           # 91 tests, one per glitch in the bible plus the tick order
 npm run typecheck
 npm run build
 npm run build:single   # dist/rank-rush.html, one self-contained file you can open
 ```
 
-`npx vite-node scripts/soak.ts 150 expedition` plays 150 seeded runs with a
-deliberately dumb house player and prints what the board does. Pass `sprint` and a
-seconds-per-move figure to pace a timed mode: `... 150 sprint 1.5`. That is how the
-last-rank distances were tuned — see the table in [`docs/CHANGES.md`](docs/CHANGES.md).
+### Stress harnesses
+
+`npm run stress` runs the lot. Individually:
+
+| | What it does |
+| --- | --- |
+| `npm run soak -- 150 expedition` | Plays seeded runs with a deliberately dumb house player and prints the shape of them. Pass `sprint 1.5` to pace a timed mode by seconds-per-move. This is how the last-rank distances were tuned — see [`docs/CHANGES.md`](docs/CHANGES.md). |
+| `npm run fuzz -- 400 sprint` | Random legal play, random promotions, clock ticks fired at random moments. Asserts the invariants and "a live board has a move" after every single ply. |
+| `vite-node scripts/endgame.ts` | Drops varied armies in front of the last rank and plays the fight out, checking the formation stands and that victory and the enemy king agree. |
+| `vite-node scripts/determinism.ts` | Replays 300 runs three times each; the boards must be identical, and different seeds must differ. |
+| `vite-node scripts/perf.ts` | Times plies on the heaviest realistic board. |
+
+The fuzzers earned their keep: G47, G48 and G49 were all found this way, not by
+the test suite.
 
 ## How to play
 
@@ -128,6 +138,8 @@ has a lock in the code and a test named after it:
 | 12.6 input, UI, replay | G36–G40, G44 | `tests/input-replay.test.ts` |
 | 12.7 score exploits | G41–G43 | `tests/score.test.ts` |
 | 12.9 real time | G45–G46 | `tests/modes.test.ts` |
+| 12.10 live board, no move | G47–G48 | `tests/softlock.test.ts` |
+| 12.11 the rear stays on the map | G49 | `tests/softlock.test.ts` |
 | 7 one reply per turn | — | `tests/one-move.test.ts` |
 | 9, 11, 5 | tick order, invariants, the locked start, the enemy phase's own report | `tests/engine.test.ts` |
 

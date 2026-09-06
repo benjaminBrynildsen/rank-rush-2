@@ -84,3 +84,42 @@ Numbers from 150-run soaks with the deliberately bad house player in
 The house player only walks the king forward and takes what is in front of it, so
 a real player should do considerably better. Sprint is tuned so its last rank is
 *visible* to most runs and *reachable* by good ones.
+
+### What v2 broke, and how it was caught
+
+Three bugs, all consequences of the four changes above, none found by the test
+suite. They were found by fuzzing — random legal play asserting the invariants
+after every ply — which is why those harnesses now live in `scripts/` and are
+part of the workflow rather than a one-off.
+
+**G47 — checkmate with no ending.** The tick order checks legality at step 8, but
+generation runs at step 11. A pack scrolling in could cover the king's last
+escape squares after the check had already passed, leaving the player in
+checkmate with no game-over screen: a frozen board. Present in 14 of the first
+200 Expedition seeds. This is not new to v2 in principle — the ordering was
+always like that — but v2's depth ramp made packs big enough to actually do it.
+
+**G48 — packs spawning into check.** The fairness half of the same bug. Spawn
+stun stops a fresh pack moving; nothing stopped one materialising already
+attacking the king. Worse than a fog shotgun, since the player cannot answer at
+all. The generator now refuses to place a piece that gives check, and the pack
+is one smaller.
+
+**G49 — spawns off the end of the map.** New to v2, and it took both changes to
+reach: the last rank capped the board from the front, and Sprint's clock-driven
+wake pushed the column against it from behind. Squeezed between them, the
+"try one rank further up" fallback for a full rear rank pointed past the end of
+the map. The invariant caught it, the ply rolled back, and the engine rethrew —
+into a click handler with no catch, so in the real UI the player's move would
+silently fail and they would be stuck. Two fixes: bound the rear spawn by the
+window, and let the UI report a refused ply instead of throwing.
+
+The last one is the argument for asserting invariants every tick rather than at
+the end. It only reproduces with a full column, a clock-driven wake, and the last
+rank all in play at once — about 1 run in 300, roughly 220 plies deep.
+
+### Coverage after the fixes
+
+155,000 fuzzed plies across both modes, 300 replayed runs, 240 endgame fights:
+no invariant failures, no stalls, no rejected-but-legal moves, no exceptions.
+Heaviest realistic board profiles at p50 0.44ms and p99 1.4ms a ply.

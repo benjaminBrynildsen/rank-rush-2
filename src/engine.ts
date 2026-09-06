@@ -280,6 +280,15 @@ function resolvePly(state: GameState, mover: Piece, request: MoveRequest, events
   // 11. Generate whatever just scrolled into view. New packs arrive stunned.
   generateVisibleChunks(state, events);
 
+  // 11b. Step 8 checked the board as it stood before the wake and before
+  // generation. Both can change what the player can do, and a board with no
+  // legal move and no ending is a frozen UI, not a game (G21, G47). Re-check
+  // last, so nothing that ran after step 8 can leave the run hanging.
+  if (!hasAnyLegalMove(state)) {
+    endRun(state, 'no-legal-move', events);
+    return;
+  }
+
   const crown = playerKing(state);
   if (crown && crown.rank >= RANK_MAX) {
     endRun(state, 'map-ends', events);
