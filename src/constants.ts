@@ -39,8 +39,23 @@ export const MAX_FRIENDLY = 32;
 /** Ranks 1..NO_SPAWN_BELOW are the starting yard: the generator never spawns there. */
 export const NO_SPAWN_BELOW = 7;
 
-/** A boss court sits on every BOSS_EVERY ranks. */
+/** A warband - the heavy pack, no king - sits on every BOSS_EVERY ranks. */
 export const BOSS_EVERY = 50;
+
+/**
+ * Exactly one enemy piece acts per player move. The board answers you the way
+ * an opponent does, not the way a swarm does (section 7).
+ */
+export const ENEMY_MOVES_PER_TURN = 1;
+
+/** Enemy pieces considered each turn, nearest first. The rest are scenery. */
+export const AI_CANDIDATES = 24;
+
+/** Ranks between difficulty steps: every step buys the packs another escort. */
+export const RAMP_EVERY = 25;
+
+/** Escorts a pack can gain from the ramp, on top of its own contents. */
+export const MAX_ESCORTS = 5;
 
 /** At most this many player queens may exist at once (G17). */
 export const MAX_PLAYER_QUEENS = 1;

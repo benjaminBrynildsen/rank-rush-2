@@ -2,8 +2,14 @@
 
 > An 8-wide endless chess expedition. Start with a king and a knight. Loot an army. Outrun the wake.
 
-This document is the single source of truth for the first build. **If code and this
-doc disagree, the doc wins until we change the doc on purpose.**
+This document is the single source of truth for the build. **If code and this doc
+disagree, the doc wins until we change the doc on purpose.**
+
+> **v2, deliberately changed.** Four locked decisions were reopened on purpose
+> after playing v1: the run can now be **won**, the board answers with **one move
+> per turn**, encounters **ramp with depth**, and **Sprint** is built. The rows
+> below are the current locks; [`CHANGES.md`](./CHANGES.md) records what moved and
+> why.
 
 The original is kept verbatim alongside this file as
 [`Rank_Rush_Design_Bible_v1.docx`](./Rank_Rush_Design_Bible_v1.docx). This markdown
@@ -28,9 +34,9 @@ Same piece moves as chess. Different purpose: raid, recruit, keep walking.
 
 | Decision | Lock |
 | --- | --- |
-| Board | 8 files (a–h) × infinite ranks forward. Edges on left/right. No wrap. |
+| Board | 8 files (a–h) × ranks forward to the last rank. Edges on left/right. No wrap. |
 | Start | 1 king + 1 knight on ranks 1–2. |
-| Win | There is no win. High score. Run ends on king death. |
+| Win | Capture the enemy king on the last rank. That is the only win. |
 | Distance score | King rank only. Vanguard is camera/feel, not the leaderboard number. |
 | Recruiters | King and knight only. Other pieces never recruit. |
 | Pawn drip | Every 8 committed player moves, a pawn spawns at the rear. |
@@ -42,6 +48,9 @@ Same piece moves as chess. Different purpose: raid, recruit, keep walking.
 | Enemy promotion | Off for v1. |
 | Holes / biomes | Off for v1. |
 | Pack respawn | Never. |
+| Enemy reply | Exactly one enemy piece moves per player move. |
+| Difficulty | Packs gain a body every 25 ranks, and better bodies with depth. |
+| Last rank | One enemy king, in a full home formation. Nothing past it. |
 | Window | Keep wake → fog + 2 ranks in memory only. |
 
 ## 3. Board and camera
@@ -163,7 +172,25 @@ seeded by `hash(seed, chunkIndex)`.
 | Battery | Bishop pair or rook on an open file | 24+ |
 | Queen raid | Queen + 2 escorts | 40+ |
 | Siege wall | Pawn line across files, with at least one gap | 48+ |
-| Boss court | Black king + court. Capturing the king is a score spike, not the end. | every 50 |
+| Warband | Queen, two rooks, escorts. **No king.** | every 50 |
+| The last rank | A full chess set in home formation, the run's only king. | the end |
+
+### The ramp
+
+- Every 25 ranks a pack gains one more body, capped at 5 extra.
+- Escorts improve with depth: pawns and knights below rank 30, bishops and rooks
+  by 60, rooks and queens past 100.
+- There is exactly **one enemy king in a run**, and he stands on the last rank.
+  Warbands replaced the old boss court so that stays true.
+
+### The last rank
+
+- The enemy back rank stands on `mode.lastRank`, its pawns one rank in front, in
+  standard chess formation: R N B Q K B N R.
+- **It is the end of the map.** No move, slide or spawn reaches past it, so there
+  is no walking around the army. The only way through is through the king.
+- Capturing that king ends the run as a win, with the score kept.
+- It is stood up once, exactly, when the window first reaches it.
 
 ### Generator locks
 
@@ -182,11 +209,15 @@ seeded by `hash(seed, chunkIndex)`.
 
 ### Enemy AI (dumb-smart)
 
-- Only pieces inside the window + 2 ranks act.
-- Cap active AI pieces at 24. Extra units are frozen decorations until a slot frees.
-- Resolve sequential, not simultaneous. Order: front rank first, then file a→h.
-- Per piece: if a capture of a hanging / reachable target exists, take the richest.
-  Else step one toward the king (or vanguard). Else stay.
+- **Exactly one enemy piece moves per player move.** The board answers the way an
+  opponent does, not the way a swarm does. This is what makes it read as chess.
+- Only pieces inside the window + 2 ranks are considered.
+- Consider at most 24 candidates, nearest first. The rest are scenery.
+- Of every legal enemy move on the board, play the single best one: the richest
+  capture if any capture exists, otherwise the move that gets a piece closest to
+  the king. A move that does not close the gap is not played.
+- Depth cannot mean "more replies per turn" any more, so it means better material
+  and a thicker wall instead. See the ramp below.
 - No enemy may move backward more than 1 rank.
 - If the destination is taken this phase, skip.
 - If a piece has zero legal moves: stay. Never throw.
@@ -207,12 +238,20 @@ farm.
 
 If the only escape square is on or behind the wake, it is illegal. The king dies.
 
-### Game over
+### Run over
+
+**Won:** the king on the last rank is captured (`crown-taken`).
+
+**Lost:**
 
 - Player king captured by an enemy move.
 - Player king has no legal safe move (checkmate or stalemate).
 - Wake covers the king.
+- The clock runs out in a timed mode (`out-of-time`) — a benign ending, keep score.
 - `RANK_MAX` reached (benign ending, keep score).
+
+With one reply per turn and check enforced properly, being captured outright is
+close to unreachable: you are mated instead, exactly as in chess.
 
 ### Score
 
@@ -395,20 +434,49 @@ Implement the lock, then add a test named after the glitch.
 - **G43 — Feed pieces to the wake for a bonus.** *Lock:* wake deaths score 0.
 - **G44 — Undo forever.** *Lock:* no undo in v1 (tutorial-only later).
 
+### 12.9 Real time
+
+- **G45 — A clock tick lands inside a ply.** In a timed mode the wake runs on a
+  wall clock, which does not care that a turn is half-resolved. *Lock:* a tick
+  arriving while the board is busy queues in `pendingWakeTicks` and is spent the
+  moment the board is idle. The wake still only ever moves between full turns
+  (G05).
+- **G46 — A backgrounded tab kills the run.** The clock keeps running while the
+  player is on another tab, and they come back to eighteen queued wake ticks.
+  *Lock:* the clock stops while `document.hidden`. Losing to a background tab is
+  not difficulty, it is a bug.
+
 ### 12.8 v1 features we are not building because they glitch more than they add
 
 Castling after the home row is gone. En passant ghost squares vs the wake. Enemy
 promotions off-screen. Map holes under standing pieces. Wrapping files. Real-time
 simultaneous moves. Pieces that spawn pieces besides the two growth rules.
 
-## 13. Modes (after the core works)
+## 13. Modes
 
-- **Expedition** — standard. Wake on. Score run.
-- **Sprint** — 3-minute clock, king-rank only.
-- **Caravan** — optional later: keep more pieces alive for a bonus.
-- **Daily seed** — the same road for everyone that day.
+Both modes end at the same place: the last rank.
 
-Do not build modes until the tick order and invariants are boring.
+### Expedition (built)
+
+The long road. The wake advances one rank every 3 committed moves — it only moves
+when you do. No clock. Last rank at **121**.
+
+### Sprint (built)
+
+Three minutes. The wake advances one rank **every 10 seconds of real time**,
+whether you move or not, so hesitating costs ranks off the back of your column
+rather than nothing at all. At 0:00 the run ends and the score is banked — the
+clock is a horizon, not a death. Last rank at **85**, which a good player can
+reach and a careful one cannot.
+
+The clock never touches the tick order: it queues wake ticks (G45) and the engine
+spends them between turns like any other.
+
+### Not built
+
+- **Caravan** — keep more pieces alive for a bonus.
+- **Daily seed** — the same road for everyone that day. The seed function exists
+  and both modes already use it; there is no leaderboard to hang it on yet.
 
 ## 14. First playable build
 

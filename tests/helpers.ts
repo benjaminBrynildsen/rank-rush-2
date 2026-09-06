@@ -7,6 +7,9 @@ import type { GameState, Piece, PieceType, PromoType, Side, Square } from '../sr
 export function bareGame(seed = 1): GameState {
   const state = createGame(seed);
   state.pieces = state.pieces.filter((p) => p.side === 'player');
+  // Fixtures own the board: no generated packs, and no last army standing up
+  // underneath a test that never asked for one.
+  state.lastArmyPlaced = true;
   // Mark every chunk a test could reach as already generated, so no encounter
   // materialises underneath a fixture.
   state.generatedChunks = Array.from({ length: 512 }, (_, i) => i);

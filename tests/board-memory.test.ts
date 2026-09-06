@@ -19,6 +19,10 @@ describe('12.1 board and memory', () => {
 
   it('G02 - rank never overflows: the map ends at RANK_MAX', () => {
     const state = bareGame();
+    // Push the map's end out to the integer cap: this test is about overflow,
+    // not about the last army.
+    state.lastRank = RANK_MAX;
+    state.lastArmyPlaced = true;
     state.wakeRank = RANK_MAX - 20;
     const king = playerKingOf(state);
     king.file = 4;

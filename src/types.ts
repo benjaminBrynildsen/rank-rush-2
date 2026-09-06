@@ -1,3 +1,5 @@
+import type { ModeId } from './modes.js';
+
 export type PieceType = 'pawn' | 'knight' | 'bishop' | 'rook' | 'queen' | 'king';
 
 /** Everything a pawn may become. Never a king (G18). */
@@ -24,7 +26,10 @@ export type GameOverReason =
   | 'king-captured'
   | 'no-legal-move'
   | 'wake-took-the-king'
-  | 'map-ends';
+  | 'map-ends'
+  | 'out-of-time'
+  /** You took the last king. The only way a run is won. */
+  | 'crown-taken';
 
 export interface Square {
   file: number;
@@ -32,6 +37,7 @@ export interface Square {
 }
 
 export interface GameState {
+  mode: ModeId;
   seed: number;
   /** Number of committed player moves. */
   moveIndex: number;
@@ -46,8 +52,22 @@ export interface GameState {
    * Hits PAWN_PERIOD -> spawn, reset to 0.
    */
   movesUntilPawn: number;
-  /** Committed player moves since the last wake tick, 0..2. */
+  /** Committed player moves since the last wake tick. Unused in timed modes. */
   movesUntilWake: number;
+  /**
+   * Wake ticks the clock has asked for but that have not been applied yet.
+   * The wake never lands inside a ply (G05, G45), so a timer that fires mid-turn
+   * queues here and is spent the moment the board is idle again.
+   */
+  pendingWakeTicks: number;
+
+  /**
+   * The rank the enemy back rank stands on, and the end of the map. Moves past
+   * it are illegal: the only way through the last army is through its king.
+   */
+  lastRank: number;
+  /** True once the last army has been generated, so it is never built twice. */
+  lastArmyPlaced: boolean;
 
   pieces: Piece[];
   nextPieceId: number;

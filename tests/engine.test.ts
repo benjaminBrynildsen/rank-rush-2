@@ -97,7 +97,14 @@ describe('section 11 - invariants hold every tick', () => {
     }
     expect(reasons.size).toBeGreaterThan(0);
     for (const reason of reasons) {
-      expect(['king-captured', 'no-legal-move', 'wake-took-the-king', 'map-ends']).toContain(reason);
+      expect([
+        'king-captured',
+        'no-legal-move',
+        'wake-took-the-king',
+        'map-ends',
+        'out-of-time',
+        'crown-taken',
+      ]).toContain(reason);
     }
   });
 });

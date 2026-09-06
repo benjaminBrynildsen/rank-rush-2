@@ -5,9 +5,13 @@
  *   npx vite-node scripts/soak.ts [runs]
  */
 import { createGame, totalScore } from '../src/engine.js';
+import { MODES, type ModeId } from '../src/modes.js';
 import { legalMoves } from '../src/moves.js';
 import type { GameState, Square } from '../src/types.js';
-import { move } from '../src/engine.js';
+import { endOnClock, move, requestWakeTick } from '../src/engine.js';
+
+/** What a human turn costs in real time. Only used to pace the timed modes. */
+const SECONDS_PER_PLY = Number(process.argv[4] ?? 1.5);
 
 function step(state: GameState): boolean {
   const pieces = [...state.pieces].filter((p) => p.side === 'player').sort((a, b) => a.id - b.id);
@@ -42,28 +46,49 @@ function step(state: GameState): boolean {
 }
 
 const runs = Number(process.argv[2] ?? 200);
+const mode = (process.argv[3] ?? 'expedition') as ModeId;
 const reasons = new Map<string, number>();
 let ranks = 0;
 let captures = 0;
 let score = 0;
 let plies = 0;
+let fallen = 0;
 
 for (let seed = 1; seed <= runs; seed++) {
-  const state = createGame(seed);
+  const state = createGame(seed, mode);
+  const config = MODES[mode];
   let n = 0;
-  while (!state.gameOverReason && n < 2000 && step(state)) n++;
+  let ticked = 0;
+  while (!state.gameOverReason && n < 2000 && step(state)) {
+    n++;
+    if (config.wakeSeconds === null) continue;
+
+    // Stand in for a wall clock: the player spends SECONDS_PER_PLY a turn.
+    const seconds = n * SECONDS_PER_PLY;
+    if (config.clockSeconds !== null && seconds >= config.clockSeconds) {
+      endOnClock(state);
+      break;
+    }
+    const owed = Math.floor(seconds / config.wakeSeconds) - ticked;
+    for (let t = 0; t < owed; t++) {
+      ticked++;
+      requestWakeTick(state);
+    }
+  }
   reasons.set(state.gameOverReason ?? 'still going', (reasons.get(state.gameOverReason ?? 'still going') ?? 0) + 1);
   ranks += state.bestKingRank;
   captures += state.captures;
   score += totalScore(state);
   plies += n;
+  fallen += state.fallen;
 }
 
-console.log(`${runs} runs`);
+console.log(`${runs} runs of ${MODES[mode].name} (last rank ${MODES[mode].lastRank})`);
 console.log(`  mean king rank : ${(ranks / runs).toFixed(1)}`);
 console.log(`  mean captures  : ${(captures / runs).toFixed(1)}`);
 console.log(`  mean score     : ${(score / runs).toFixed(0)}`);
 console.log(`  mean plies     : ${(plies / runs).toFixed(1)}`);
+console.log(`  mean fallen    : ${(fallen / runs).toFixed(1)}`);
 for (const [reason, count] of [...reasons].sort((a, b) => b[1] - a[1])) {
   console.log(`  ${reason.padEnd(18)} ${count}`);
 }

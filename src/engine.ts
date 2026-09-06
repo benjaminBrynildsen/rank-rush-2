@@ -3,7 +3,6 @@ import {
   FILES,
   PAWN_PERIOD,
   RANK_MAX,
-  WAKE_PERIOD,
 } from './constants.js';
 import {
   inWindow,
@@ -15,10 +14,11 @@ import {
 } from './board.js';
 import { hasAnyLegalMove, legalMoves } from './moves.js';
 import { enemyPhase } from './ai.js';
-import { generateChunk } from './generate.js';
+import { generateChunk, placeLastArmy } from './generate.js';
 import { pawnReadyToPromote, promote, recruits, spawnAtRear } from './growth.js';
 import { captureValue, POINTS_PER_RANK } from './score.js';
 import { checkInvariants, InvariantError } from './invariants.js';
+import { DEFAULT_MODE, MODES, type ModeId } from './modes.js';
 import type {
   GameOverReason,
   GameState,
@@ -34,8 +34,10 @@ import type {
 export const START_KING: Square = { file: 4, rank: 2 };
 export const START_KNIGHT: Square = { file: 6, rank: 2 };
 
-export function createGame(seed = 1): GameState {
+export function createGame(seed = 1, modeId: ModeId = DEFAULT_MODE): GameState {
+  const mode = MODES[modeId];
   const state: GameState = {
+    mode: modeId,
     seed: seed >>> 0,
     moveIndex: 0,
     generationId: 1,
@@ -43,6 +45,9 @@ export function createGame(seed = 1): GameState {
     fogRank: 0,
     movesUntilPawn: 0,
     movesUntilWake: 0,
+    pendingWakeTicks: 0,
+    lastRank: mode.lastRank,
+    lastArmyPlaced: false,
     pieces: [],
     nextPieceId: 1,
     generatedChunks: [],
@@ -176,6 +181,13 @@ function resolvePly(state: GameState, mover: Piece, request: MoveRequest, events
   mover.neverMoved = false;
   events.push({ kind: 'move', pieceId: mover.id, from, to: { ...request.to } });
 
+  // There is one enemy king in a run. Taking him is the only way to win.
+  if (victim && victim.type === 'king' && victim.side === 'enemy') {
+    recordDistance(state);
+    endRun(state, 'crown-taken', events);
+    return;
+  }
+
   const king = playerKing(state);
   recordDistance(state);
   refreshFog(state);
@@ -250,36 +262,19 @@ function resolvePly(state: GameState, mover: Piece, request: MoveRequest, events
     return;
   }
 
-  // 9. Wake tick, between full turns only (G05).
-  state.movesUntilWake++;
-  if (state.movesUntilWake >= WAKE_PERIOD) {
-    state.movesUntilWake = 0;
-    const newWake = state.wakeRank + 1;
-
-    // 10. If the wake would cover the king, end the run before deleting anything (G06).
-    const crown = playerKing(state);
-    if (crown && crown.rank <= newWake) {
-      state.wakeRank = newWake;
-      endRun(state, 'wake-took-the-king', events);
-      return;
+  // 9. Wake tick, between full turns only (G05). In the timed modes the clock
+  // has already queued these; in Expedition the move counter earns them.
+  const period = MODES[state.mode].wakeMoves;
+  if (period !== null) {
+    state.movesUntilWake++;
+    if (state.movesUntilWake >= period) {
+      state.movesUntilWake = 0;
+      state.pendingWakeTicks++;
     }
-
-    const eaten = state.pieces.filter((p) => p.rank <= newWake);
-    state.pieces = state.pieces.filter((p) => p.rank > newWake);
-    state.wakeRank = newWake;
-    state.fallen += eaten.filter((p) => p.side === 'player').length;
-    events.push({ kind: 'wake', rank: newWake, eaten: eaten.length });
-
-    // A selected piece that just got eaten is gone: drop the selection (G07).
-    if (state.selectedId !== null && !pieceById(state, state.selectedId)) {
-      state.selectedId = null;
-      state.legalTargets = [];
-    }
-
-    if (!hasAnyLegalMove(state)) {
-      endRun(state, 'no-legal-move', events);
-      return;
-    }
+  }
+  while (state.pendingWakeTicks > 0) {
+    state.pendingWakeTicks--;
+    if (!applyWakeTick(state, events)) return;
   }
 
   // 11. Generate whatever just scrolled into view. New packs arrive stunned.
@@ -289,6 +284,73 @@ function resolvePly(state: GameState, mover: Piece, request: MoveRequest, events
   if (crown && crown.rank >= RANK_MAX) {
     endRun(state, 'map-ends', events);
   }
+}
+
+/**
+ * Move the wake up one rank. Returns false when that ended the run, so the
+ * caller stops rather than working on a finished board.
+ */
+function applyWakeTick(state: GameState, events: PlyEvent[]): boolean {
+  const newWake = state.wakeRank + 1;
+
+  // If the wake would cover the king, end the run before deleting anything (G06).
+  const crown = playerKing(state);
+  if (crown && crown.rank <= newWake) {
+    state.wakeRank = newWake;
+    endRun(state, 'wake-took-the-king', events);
+    return false;
+  }
+
+  const eaten = state.pieces.filter((p) => p.rank <= newWake);
+  state.pieces = state.pieces.filter((p) => p.rank > newWake);
+  state.wakeRank = newWake;
+  state.fallen += eaten.filter((p) => p.side === 'player').length;
+  events.push({ kind: 'wake', rank: newWake, eaten: eaten.length });
+
+  // A selected piece that just got eaten is gone: drop the selection (G07).
+  if (state.selectedId !== null && !pieceById(state, state.selectedId)) {
+    state.selectedId = null;
+    state.legalTargets = [];
+  }
+
+  if (!hasAnyLegalMove(state)) {
+    endRun(state, 'no-legal-move', events);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * The clock asking for a wake tick. It never lands inside a ply: a timer that
+ * fires while a turn is resolving queues instead, and the tick is spent the
+ * moment the board is idle again (G45).
+ */
+export function requestWakeTick(state: GameState): PlyResult {
+  const events: PlyEvent[] = [];
+  if (state.gameOverReason) return { ok: false, rejected: 'game-over', events };
+
+  state.pendingWakeTicks++;
+  if (state.busy) return { ok: true, events };
+
+  state.busy = true;
+  while (state.pendingWakeTicks > 0 && !state.gameOverReason) {
+    state.pendingWakeTicks--;
+    if (!applyWakeTick(state, events)) break;
+  }
+  state.busy = false;
+  state.selectedId = null;
+  state.legalTargets = [];
+  state.generationId++;
+  return { ok: true, events };
+}
+
+/** The clock ran out. Nothing dramatic: you bank what you climbed. */
+export function endOnClock(state: GameState): PlyResult {
+  const events: PlyEvent[] = [];
+  if (state.gameOverReason) return { ok: false, rejected: 'game-over', events };
+  endRun(state, 'out-of-time', events);
+  state.generationId++;
+  return { ok: true, events };
 }
 
 /**
@@ -339,6 +401,13 @@ export function generateVisibleChunks(state: GameState, events: PlyEvent[] = [])
     const pack = generateChunk(state, chunk);
     if (pack) {
       events.push({ kind: 'spawn-pack', packId: pack.packId, name: pack.name, count: pack.pieces.length });
+    }
+  }
+
+  if (!state.lastArmyPlaced && top >= state.lastRank) {
+    const army = placeLastArmy(state);
+    if (army) {
+      events.push({ kind: 'spawn-pack', packId: army.packId, name: army.name, count: army.pieces.length });
     }
   }
 }

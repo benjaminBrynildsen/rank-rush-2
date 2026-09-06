@@ -41,9 +41,13 @@ export function rearRank(state: GameState): number {
   return best === RANK_MAX ? 1 : best;
 }
 
-/** Only a window lives in RAM: wakeRank exclusive through fogRank + 2 (G01). */
+/**
+ * Only a window lives in RAM: wakeRank exclusive through fogRank + 2 (G01).
+ * It also stops dead at the last rank - the enemy back rank is the end of the
+ * map, so no move, slide or spawn reaches past it.
+ */
 export function windowTop(state: GameState): number {
-  return Math.min(RANK_MAX, state.fogRank + WINDOW_MARGIN);
+  return Math.min(RANK_MAX, state.lastRank, state.fogRank + WINDOW_MARGIN);
 }
 
 export function inWindow(state: GameState, rank: number): boolean {

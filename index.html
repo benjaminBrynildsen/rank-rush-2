@@ -165,6 +165,55 @@
       #log div:first-child { color: var(--text); }
       #log:empty::after { content: "Make a move."; color: var(--muted); font-size: 12.5px; }
 
+      #menu {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        gap: 18px;
+        justify-items: center;
+        padding: 20px;
+        background: rgba(24, 23, 21, 0.9);
+        text-align: center;
+      }
+      #menu[hidden] { display: none; }
+      #menu h2 { margin: 0; font-family: var(--display); font-size: 22px; color: #fff; }
+      #menu > p { margin: -8px 0 0; max-width: 46ch; color: var(--muted); }
+      .modes { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+      .modes button {
+        width: 258px;
+        padding: 16px 18px;
+        display: grid;
+        gap: 6px;
+        justify-items: start;
+        text-align: left;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--text);
+        box-shadow: none;
+        font-weight: 400;
+      }
+      .modes button:hover { background: #2f2d2a; border-color: var(--accent); }
+      .modes button:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
+      .modes b {
+        font-family: var(--display);
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+      }
+      .modes span { font-size: 12.5px; color: var(--muted); }
+      .modes dl {
+        margin: 4px 0 0;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 2px 8px;
+        font-size: 11.5px;
+        color: var(--muted);
+      }
+      .modes dt { color: var(--accent); }
+      .modes dd { margin: 0; font-variant-numeric: tabular-nums; }
+
       #promo, #over {
         position: absolute;
         inset: 0;
@@ -178,6 +227,7 @@
       #promo[hidden], #over[hidden] { display: none; }
       #promo h2, #over h2 { margin: 0; font-family: var(--display); font-size: 21px; color: #fff; }
       #over p { margin: 0; color: var(--muted); }
+      #over.won h2 { color: var(--accent-hi); }
 
       .choices { display: flex; gap: 10px; }
       .choices button {
@@ -238,6 +288,34 @@
           </div>
         </div>
         <div id="over" hidden></div>
+
+        <div id="menu">
+          <h2>Pick a road</h2>
+          <p>
+            Both roads end at the same place: one enemy king, standing behind a
+            full army on the last rank. Take him and the run is won.
+          </p>
+          <div class="modes">
+            <button data-mode="expedition">
+              <b>Expedition</b>
+              <span>The long road. The wake moves when you do.</span>
+              <dl>
+                <dt>Wake</dt><dd>1 rank / 3 moves</dd>
+                <dt>Clock</dt><dd>none</dd>
+                <dt>Last rank</dt><dd>121</dd>
+              </dl>
+            </button>
+            <button data-mode="sprint">
+              <b>Sprint</b>
+              <span>Three minutes. The wake moves whether you do or not.</span>
+              <dl>
+                <dt>Wake</dt><dd>1 rank / 10 sec</dd>
+                <dt>Clock</dt><dd>3:00, then banked</dd>
+                <dt>Last rank</dt><dd>85</dd>
+              </dl>
+            </button>
+          </div>
+        </div>
       </div>
 
       <aside>
@@ -249,9 +327,15 @@
         <div class="panel" id="rules" role="tabpanel" aria-labelledby="tab-rules">
           <h2>The board</h2>
           <p>
-            Eight files wide and endless ahead. You start with a <strong>king on e2</strong> and a
-            <strong>knight on g2</strong>. There is no checkmate to reach and no way to win — you
-            climb until something takes the crown.
+            Eight files wide. You start with a <strong>king on e2</strong> and a
+            <strong>knight on g2</strong>, and you climb toward the last rank — where one
+            enemy king stands behind a full chess army. <strong>Take that king and you
+            win.</strong> There is nothing past him, so there is no going around.
+          </p>
+          <p>
+            The board answers <strong>one piece per move</strong>, like an opponent, not a
+            swarm. Depth does not buy them more replies — it buys them better pieces and
+            a thicker wall.
           </p>
 
           <h2>Moving</h2>
@@ -293,8 +377,10 @@
 
           <h2>How the run ends</h2>
           <p>
-            The king is captured, the king has no legal safe move, or the wake takes him. Check is
-            real — his square glows red.
+            <strong>You win</strong> by capturing the king on the last rank. You lose when your
+            own king has no legal safe move, when the wake takes him, or — in Sprint — when the
+            clock runs out, which still banks everything you climbed. Check is real, and his
+            square glows red.
           </p>
 
           <h2>Scoring</h2>
@@ -306,7 +392,7 @@
             <dt>Streak</dt>
             <dd>the 4th and later take inside one pack is worth half again.</dd>
             <dt>Survivors</dt>
-            <dd>a point each for pieces still standing when you fall.</dd>
+            <dd>a point each for pieces still standing at the end, won or lost.</dd>
           </dl>
 
           <h2>The loop</h2>

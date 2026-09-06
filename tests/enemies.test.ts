@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHUNK_SIZE, MAX_ACTIVE_AI } from '../src/constants.js';
+import { CHUNK_SIZE, ENEMY_MOVES_PER_TURN, MAX_ACTIVE_AI } from '../src/constants.js';
 import { isAttacked, legalMoves } from '../src/moves.js';
 import { enemyPhase } from '../src/ai.js';
 import { PACKS, generateChunk } from '../src/generate.js';
@@ -113,7 +113,7 @@ describe('12.5 enemies and fog', () => {
     expect(seen[2]).toBe(seen[3]);
   });
 
-  it('G33 - at most 24 enemies act in a phase', () => {
+  it('G33 - a board thick with enemies still answers with exactly one move', () => {
     const state = bareGame();
     placeAt(state, playerKingOf(state), 4, 4);
     let placed = 0;
@@ -124,7 +124,9 @@ describe('12.5 enemies and fog', () => {
       }
     }
     const result = enemyPhase(state);
-    expect(result.moved).toBeLessThanOrEqual(MAX_ACTIVE_AI);
+    expect(result.moved).toBe(ENEMY_MOVES_PER_TURN);
+    expect(result.moves).toHaveLength(1);
+    expect(placed).toBeGreaterThan(MAX_ACTIVE_AI);
   });
 
   it('G34 - a cleared pack never comes back', () => {

@@ -1,8 +1,11 @@
 # Where the build deviates from the bible
 
-The bible wins until we change it on purpose. These are the places the first build
-had to choose something it did not specify, or bend something it did, and why. Each
+The bible wins until we change it on purpose. These are the places the build had to
+choose something the bible did not specify, or bend something it did, and why. Each
 one is a candidate edit to the bible rather than a private decision in the code.
+
+Deliberate rewrites of the bible — where we decided the doc was wrong — are
+recorded separately in [`CHANGES.md`](./CHANGES.md).
 
 ## 1. The fog ratchets forward and never recedes
 
@@ -34,16 +37,18 @@ would mean an encounter that skips a chunk, which reintroduces cross-chunk state
 The observed range sits inside the bible's, so this is a narrowing rather than a
 break — but section 7 should probably say 6–10.
 
-## 3. Boss kings stand and fight
+## 3. The last king stands and fights
 
 **Bible:** section 16, open question — "whether boss kings flee or stand."
 
-**Build:** a boss king takes the richest capture available and otherwise steps
-toward the player king, exactly like every other enemy piece.
+**Build:** the king on the last rank takes the richest capture available and
+otherwise steps toward the player king, exactly like every other enemy piece.
 
-**Why:** it is the option with no extra code and no extra failure mode. Fleeing needs
-its own "is this cheap" test and a backward-move exception, and section 7 already
-says enemies do not care about their own check.
+**Why:** it is the option with no extra code and no extra failure mode. Fleeing
+needs its own "is this cheap" test and a backward-move exception, and section 7
+already says enemies do not care about their own check. It matters more now that
+he is the win condition: a fleeing king in a bounded 8-wide corridor would be a
+frustrating chase rather than a fight, and there is nowhere for him to run to.
 
 ## 4. The two counters count up, not down
 
@@ -123,3 +128,40 @@ a fresh pack is exactly the fog shotgun G27 exists to prevent.
 **Why:** packs never respawn (G34) and everything behind the wake is deleted, so a
 chunk that has been generated is either still on the board or cleared forever. A
 second list would be state that can only ever disagree with the first.
+
+## 11. The last army is placed exactly, and never shrinks
+
+**Bible:** section 7 — "if the pack does not fit, shrink the pack."
+
+**Build:** every other pack shrinks to fit. The last army does not: each piece
+goes on its home square or is skipped, and nothing else moves to compensate.
+
+**Why:** the formation *is* the encounter. A last rank that quietly rearranged
+itself around an obstruction would not be the "fresh game of chess" the mode
+promises. In practice nothing can be standing there — generation stops a chunk
+short of the last rank — so the skip is a guard, not a behaviour.
+
+## 12. The Sprint clock lives in the UI, not the engine
+
+**Bible:** section 13 names a 3-minute clock but says nothing about where time
+lives.
+
+**Build:** the engine has no clock. It exposes `requestWakeTick()` and
+`endOnClock()`, and the render loop calls them from wall-clock deltas.
+
+**Why:** a `Date.now()` inside the engine would end determinism, and determinism
+is what makes a replay seed-plus-move-list (G39) and the whole test suite
+possible. Keeping time outside means Sprint is testable by calling the same two
+functions the clock calls.
+
+## 13. The clock stops when the tab is hidden
+
+**Bible:** silent.
+
+**Build:** no time passes while `document.hidden`.
+
+**Why:** browsers throttle background timers, so a player returning after two
+minutes away would be handed a dozen queued wake ticks at once and lose their
+column instantly. That is not a difficulty, it is a bug (G46). The alternative —
+letting real time run — would also make the mode unplayable on a phone that
+locks its screen.

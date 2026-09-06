@@ -53,27 +53,32 @@ describe('12.4 captures, check, legality', () => {
     expect(result.rejected).toBe('stale-generation');
   });
 
-  it('G25 - king captures are not safe: the crown can be taken right back', () => {
+  it('G25 - king captures buy no immunity: the reply still comes', () => {
     const state = bareGame();
     const king = placeAt(state, playerKingOf(state), 0, 10);
     state.pieces = state.pieces.filter((p) => p.id === king.id);
 
     // A straggler far behind, so the trophy recruit lands back there instead of
-    // accidentally screening the king.
+    // accidentally screening the rook.
     put(state, 'player', 'pawn', 3, 6);
-    // A free pawn one step ahead, a knight screening the rook's rank.
+    // A free pawn one step ahead, and a rook whose rank is screened by a knight.
     put(state, 'enemy', 'pawn', 0, 11);
     put(state, 'enemy', 'knight', 5, 11);
     put(state, 'enemy', 'rook', 7, 11);
 
-    // Taking the pawn is legal: nothing attacks a2 while the knight blocks rank 11.
+    // Taking the pawn is legal while the knight blocks rank 11.
     const result = play(state, king.id, sq(0, 11));
     expect(result.ok).toBe(true);
     expect(result.events.some((e) => e.kind === 'capture' && e.type === 'pawn')).toBe(true);
 
-    // The knight steps aside, the rook takes the crown in the same phase.
-    // There is no immunity frame after a king capture. That is the tax.
-    expect(state.gameOverReason).toBe('king-captured');
+    // The board answers. Nothing about a king capture skips the enemy's turn.
+    expect(result.events.filter((e) => e.kind === 'enemy-move')).toHaveLength(1);
+
+    // The knight steps off the rank, so the rook now bears on the crown. The
+    // king is in check the move after taking, with no protection for having
+    // been the one who captured. That is the tax for king-loot.
+    expect(inCheck(state)).toBe(true);
+    expect(state.gameOverReason).toBeNull();
   });
 
   it('G26 - capturing the checker is legal when the square is safe afterwards', () => {

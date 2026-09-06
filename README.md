@@ -3,37 +3,46 @@
 **An 8-wide endless chess expedition. Start with a king and a knight. Loot an army.
 Outrun the wake.**
 
-Not checkmate chess, and not infinite-plane chess. The board is eight files wide and
-endless ahead. Enemies sit in packs. You score by how far the king climbs and how
-much you take. Behind you the board collapses one rank at a time, and anything you
-leave back there is gone.
+Not checkmate chess, and not infinite-plane chess. The board is eight files wide.
+Enemies sit in packs, and the board answers you **one piece per move**, the way an
+opponent does. Behind you it collapses one rank at a time, and anything you leave
+back there is gone.
+
+At the end of the road one enemy king stands behind a full chess army in home
+formation. There is nothing past him. **Take that king and you win.**
 
 The loop in one sentence: jump or step in, steal a body, drop it at the tail, walk
-the king up, do not let the wake take the crown.
+the king up, and arrive at the last rank with an army worth arriving with.
 
 **Play it: https://benjaminbrynildsen.github.io/rank-rush-2/**
 
 ## Status
 
-This repo is the **first playable slice** from section 14 of the design bible: the
-tick order, the wake, both growth rules, the greedy enemy phase, seeded encounters,
-the invariant asserts, and a canvas UI that lets you actually play it. No modes, no
-leaderboards, no sound.
+Playable, winnable, and in two modes.
+
+- **Expedition** — the long road. The wake moves one rank every 3 moves, so it only
+  moves when you do. Last rank at 121.
+- **Sprint** — three minutes, and the wake moves one rank every 10 *seconds*
+  whether you move or not. At 0:00 the run ends and the score is banked. Last rank
+  at 85.
+
+No leaderboards and no sound yet.
 
 ## Run it
 
 ```bash
 npm install
 npm run dev        # play it at the printed localhost URL
-npm test           # 68 tests, one per glitch in the bible plus the tick order
+npm test           # 85 tests, one per glitch in the bible plus the tick order
 npm run typecheck
 npm run build
 npm run build:single   # dist/rank-rush.html, one self-contained file you can open
 ```
 
-`npx vite-node scripts/soak.ts 200` plays 200 seeded runs with a deliberately dumb
-house player and prints what the board does. Current shape: mean king rank ~208,
-~57 captures, ~417 plies per run.
+`npx vite-node scripts/soak.ts 150 expedition` plays 150 seeded runs with a
+deliberately dumb house player and prints what the board does. Pass `sprint` and a
+seconds-per-move figure to pace a timed mode: `... 150 sprint 1.5`. That is how the
+last-rank distances were tuned — see the table in [`docs/CHANGES.md`](docs/CHANGES.md).
 
 ## How to play
 
@@ -67,10 +76,13 @@ Losing the knight is survivable and it is supposed to hurt.
 
 [`docs/DESIGN_BIBLE.md`](docs/DESIGN_BIBLE.md) is the design and engine spec, kept
 alongside the original `.docx` it was transcribed from. **If the code and the bible
-disagree, the bible wins until we change the bible on purpose.** Where the build had
-to decide something the bible left open, or had to bend a rule to keep an invariant
-true, it is written down in [`docs/DEVIATIONS.md`](docs/DEVIATIONS.md) rather than
-left in the code for someone to find later.
+disagree, the bible wins until we change the bible on purpose.**
+
+- [`docs/CHANGES.md`](docs/CHANGES.md) — the times we changed it on purpose, and
+  what each change cost. v2 reopened four locks at once: the run can be won, the
+  board replies once per turn, encounters ramp with depth, and Sprint exists.
+- [`docs/DEVIATIONS.md`](docs/DEVIATIONS.md) — where the build had to decide
+  something the bible left open, or bend a rule to keep an invariant true.
 
 ## Layout
 
@@ -85,6 +97,7 @@ src/
   ai.ts          the sequential greedy enemy phase
   growth.ts      trophy recruits, conscripts, promotion, the queen cap
   score.ts       capture values and the in-pack streak
+  modes.ts       Expedition and Sprint: wake cadence, clock, where the road ends
   invariants.ts  section 11, asserted after every ply
   engine.ts      the tick order from section 9. Do not reorder it
   theme.ts       the board palette and the shell it sits in
@@ -114,6 +127,8 @@ has a lock in the code and a test named after it:
 | 12.5 enemies and fog | G27–G35 | `tests/enemies.test.ts` |
 | 12.6 input, UI, replay | G36–G40, G44 | `tests/input-replay.test.ts` |
 | 12.7 score exploits | G41–G43 | `tests/score.test.ts` |
+| 12.9 real time | G45–G46 | `tests/modes.test.ts` |
+| 7 one reply per turn | — | `tests/one-move.test.ts` |
 | 9, 11, 5 | tick order, invariants, the locked start, the enemy phase's own report | `tests/engine.test.ts` |
 
 The invariant suite replays 25 seeds for 120 plies each and asserts section 11 after
@@ -134,6 +149,6 @@ project path as-is.
 
 ## Not built, on purpose
 
-Castling. En passant. Enemy promotions. Map holes. Wrapping files. Real-time moves.
-Undo. Modes. Leaderboards. Section 12.8 explains why the first six will stay gone;
-the rest wait until the tick order and the invariants are boring.
+Castling. En passant. Enemy promotions. Map holes. Wrapping files. Simultaneous
+real-time moves. Undo. Leaderboards. Caravan mode. Section 12.8 explains why the
+first six will stay gone; the rest are just not built yet.
